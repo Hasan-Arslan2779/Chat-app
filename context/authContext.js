@@ -1,4 +1,10 @@
 import { createContext, useContext, useEffect, useState } from "react";
+import { auth, db } from "../firebaseConfig";
+import {
+  createUserWithEmailAndPassword,
+  signInWithRedirect,
+  onAuthStateChanged,
+} from "firebase/auth";
 
 export const AuthContext = createContext();
 
@@ -8,9 +14,16 @@ export const AuthContextProvider = ({ children }) => {
 
   useEffect(() => {
     // onAuthStateChanged
-    // setTimeout(() => {
-    setIsAuthencticated(false);
-    // }, 3000);
+    const unsub = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setIsAuthencticated(true);
+        setUser(user);
+      } else {
+        setIsAuthencticated(false);
+        setUser(null);
+      }
+    });
+    return unsub;
   }, []);
 
   const login = async (email, password) => {
@@ -25,7 +38,22 @@ export const AuthContextProvider = ({ children }) => {
 
   const register = async (email, password, username, profileUrl) => {
     try {
-    } catch (error) {}
+      const response = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+      console.log("response", response?.user);
+
+      await setDoc(doc(db, "users", response?.user?.uid), {
+        username,
+        profileUrl,
+        userId: response?.user?.uid,
+      });
+      return { success: true, data: response?.user };
+    } catch (error) {
+      return { success: false, msg: error.message };
+    }
   };
   return (
     <AuthContext.Provider
